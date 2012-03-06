@@ -268,7 +268,7 @@ if __name__ == '__main__':
         print("Version : %s" % version) 
         raise SystemExit
 
-    colors = {0:"Red",1:"Green",2:"Blue"}
+    colors = {0:"Red",1:"Green",2:"Blue",3:"Raw"}
     colorState = any([True for i in colors.keys() if i == colorInput])
 
     if colorState == False :
@@ -276,9 +276,12 @@ if __name__ == '__main__':
         raise SystemExit    
 
     print("Reading file %s...") % cr2FileName
-    try : 
+    try :
         #Converting the CR2 to PPM
-        p = subprocess.Popen(["dcraw","-6",cr2FileName]).communicate()[0]
+        if colorInput == 3:
+            p = subprocess.Popen(["dcraw","-D","-4",cr2FileName]).communicate()[0]
+        else:
+            p = subprocess.Popen(["dcraw","-6",cr2FileName]).communicate()[0]
 
         #Getting the EXIF of CR2 with dcraw
         p = subprocess.Popen(["dcraw","-i","-v",cr2FileName],stdout=subprocess.PIPE)
@@ -321,7 +324,10 @@ if __name__ == '__main__':
     print("Reading the PPM output...")
     try :
         #Reading the PPM
-        ppm_name = cr2FileName.split('.')[0] + '.ppm'
+        if colorInput == 3:
+            ppm_name = cr2FileName.split('.')[0] + '.pgm'
+        else:
+            ppm_name = cr2FileName.split('.')[0] + '.ppm'
         im_ppm = NetpbmFile(ppm_name).asarray()
     except :
         print("ERROR : Something went wrong while reading the PPM file.")
@@ -329,11 +335,12 @@ if __name__ == '__main__':
 
     print("Extracting %s color channels... (may take a while)" % colors[colorInput]) 
     try :
-        #Extracting the Green Channel Only
-        im_green = numpy.zeros((im_ppm.shape[0],im_ppm.shape[1]),dtype=numpy.uint16)
-        for row in xrange(0,im_ppm.shape[0]) :
-            for col in xrange(0,im_ppm.shape[1]) :
-                im_green[row,col] = im_ppm[row,col][colorInput]
+        if colorInput != 3:
+            #Extracting the Green Channel Only
+            im_green = numpy.zeros((im_ppm.shape[0],im_ppm.shape[1]),dtype=numpy.uint16)
+            for row in xrange(0,im_ppm.shape[0]) :
+                for col in xrange(0,im_ppm.shape[1]) :
+                    im_green[row,col] = im_ppm[row,col][colorInput]
     except :
         print("ERROR : Something went wrong while extracting color channels.")
         raise SystemExit
@@ -341,7 +348,12 @@ if __name__ == '__main__':
     print("Creating the FITS file...")
     try :
     #Creating the FITS File
-        hdu = pyfits.PrimaryHDU(im_green)
+        if colorInput == 3:
+            hdu = pyfits.PrimaryHDU(im_ppm)
+            tag = 'raw'
+        else:
+            hdu = pyfits.PrimaryHDU(im_green)
+            tag = colors[colorInput][0]
         hdu.header.update('OBSTIME',date)
         hdu.header.update('EXPTIME',shutter)
         hdu.header.update('APERTUR',aperture)
@@ -361,7 +373,7 @@ if __name__ == '__main__':
 
     print("Writing the FITS file...")
     try :
-        hdu.writeto(cr2FileName.split('.')[0]+"-"+colors[colorInput][0]+'.fits')
+        hdu.writeto(cr2FileName.split('.')[0]+"-"+tag+'.fits')
     except :
         print("ERROR : Something went wrong while writing the FITS file. Maybe it already exists?")
         raise SystemExit
