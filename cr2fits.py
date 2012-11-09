@@ -4,7 +4,8 @@
 # 3rd attempt
 # 15th Feb 2012, 09:38AM
 # http://eayd.in
-# http://github.com/eaydin/cr2fits
+# Original: http://github.com/eaydin/cr2fits
+#   forked: http://github.com/migueln/cr2fits
 
 ### This script is redistributable in anyway.
 ### But it includes netpbmfile.py which is NOT written by M. Emre Aydin.
@@ -255,7 +256,6 @@ if sys.version_info[0] > 2:
 if __name__ == '__main__':
 	try :
 		cr2FileName = sys.argv[1]
-		#colorChannel = int(sys.argv[2]) # 0=R 1=G 2=B 3=raw
 	except :
 		print("ERROR : You probably don't know how to use it?")
 		print("./cr2fits.py <cr2filename> <color-index>")
@@ -267,86 +267,63 @@ if __name__ == '__main__':
 		print("For details : http://github.com/eaydin/cr2fits")
 		print("Version : %s" % version) 
 		raise SystemExit
+	
+	print("Reading file %s...") % cr2FileName
+	try :
+		#Converting the CR2 to PPM
+		p = subprocess.Popen(["dcraw","-6",cr2FileName]).communicate()[0]
 
-	for colorChannel in range(3): 
-		colors = {0:"Red",1:"Green",2:"Blue",3:"Raw"}
-		colorState = any([True for i in colors.keys() if i == colorChannel])
+		#Getting the EXIF of CR2 with dcraw
+		p = subprocess.Popen(["dcraw","-i","-v",cr2FileName],stdout=subprocess.PIPE)
+		cr2header = p.communicate()[0]
 
-		if colorState == False :
-			print("ERROR : Color value can be set as 0:Red, 1:Green, 2:Blue, 3:Raw.")
-			raise SystemExit	
+		#Catching the Timestamp
+		m = re.search('(?<=Timestamp:).*',cr2header)
+		date1=m.group(0).split()
+		months = { 'Jan' : 1, 'Feb' : 2, 'Mar' : 3, 'Apr' : 4, 'May' : 5, 'Jun' : 6, 'Jul' : 7, 'Aug' : 8, 'Sep' : 9, 'Oct' : 10, 'Nov' : 11, 'Dec' : 12 }
+		date = datetime.datetime(int(date1[4]),months[date1[1]],int(date1[2]),int(date1[3].split(':')[0]),int(date1[3].split(':')[1]),int(date1[3].split(':')[2]))
+		date ='{0:%Y-%m-%d %H:%M:%S}'.format(date)
+
+		#Catching the Shutter Speed
+		m = re.search('(?<=Shutter:).*(?=sec)',cr2header)
+		shutter = m.group(0).strip()
+		#Catching the Aperture
+		m = re.search('(?<=Aperture: f/).*',cr2header)
+		aperture = m.group(0).strip()
+
+		#Catching the ISO Speed
+		m = re.search('(?<=ISO speed:).*',cr2header)
+		iso = m.group(0).strip()
+
+		#Catching the Focal length
+		m = re.search('(?<=Focal length: ).*(?=mm)',cr2header)
+		focal = m.group(0).strip()
+
+		#Catching the Original Filename of the cr2
+		m = re.search('(?<=Filename:).*',cr2header)
+		original_file = m.group(0).strip()
+
+		#Catching the Camera Type
+		m = re.search('(?<=Camera:).*',cr2header)
+		camera = m.group(0).strip()
+
+	except :
+		print("ERROR : Something went wrong with dcraw. Do you even have dcraw?")
+		raise SystemExit
+
+	print("Reading the PPM output...")
+	try :
+		#Reading the PPM
+		ppm_name = cr2FileName.split('.')[0] + '.ppm'
+		im_ppm = NetpbmFile(ppm_name).asarray()
+	except :
+		print("ERROR : Something went wrong while reading the PPM file.")
+		raise SystemExit
+	else:
+		print 'Deleting temporary PPM file'
+		os.remove(ppm_name)
 	
-		print("Reading file %s...") % cr2FileName
-		try :
-			#Converting the CR2 to PPM
-			if colorChannel == 3:
-				p = subprocess.Popen(["dcraw","-D","-4",cr2FileName]).communicate()[0]
-			else:
-				p = subprocess.Popen(["dcraw","-6",cr2FileName]).communicate()[0]
-	
-			#Getting the EXIF of CR2 with dcraw
-			p = subprocess.Popen(["dcraw","-i","-v",cr2FileName],stdout=subprocess.PIPE)
-			cr2header = p.communicate()[0]
-	
-			#Catching the Timestamp
-			m = re.search('(?<=Timestamp:).*',cr2header)
-			date1=m.group(0).split()
-			months = { 'Jan' : 1, 'Feb' : 2, 'Mar' : 3, 'Apr' : 4, 'May' : 5, 'Jun' : 6, 'Jul' : 7, 'Aug' : 8, 'Sep' : 9, 'Oct' : 10, 'Nov' : 11, 'Dec' : 12 }
-			date = datetime.datetime(int(date1[4]),months[date1[1]],int(date1[2]),int(date1[3].split(':')[0]),int(date1[3].split(':')[1]),int(date1[3].split(':')[2]))
-			date ='{0:%Y-%m-%d %H:%M:%S}'.format(date)
-	
-			#Catching the Shutter Speed
-			m = re.search('(?<=Shutter:).*(?=sec)',cr2header)
-			shutter = m.group(0).strip()
-			#Catching the Aperture
-			m = re.search('(?<=Aperture: f/).*',cr2header)
-			aperture = m.group(0).strip()
-	
-			#Catching the ISO Speed
-			m = re.search('(?<=ISO speed:).*',cr2header)
-			iso = m.group(0).strip()
-	
-			#Catching the Focal length
-			m = re.search('(?<=Focal length: ).*(?=mm)',cr2header)
-			focal = m.group(0).strip()
-	
-			#Catching the Original Filename of the cr2
-			m = re.search('(?<=Filename:).*',cr2header)
-			original_file = m.group(0).strip()
-	
-			#Catching the Camera Type
-			m = re.search('(?<=Camera:).*',cr2header)
-			camera = m.group(0).strip()
-	
-		except :
-			print("ERROR : Something went wrong with dcraw. Do you even have dcraw?")
-			raise SystemExit
-	
-		print("Reading the PPM output...")
-		try :
-			#Reading the PPM
-			if colorChannel == 3:
-				ppm_name = cr2FileName.split('.')[0] + '.pgm'
-			else:
-				ppm_name = cr2FileName.split('.')[0] + '.ppm'
-			im_ppm = NetpbmFile(ppm_name).asarray()
-		except :
-			print("ERROR : Something went wrong while reading the PPM file.")
-			raise SystemExit
-		else:
-			print 'Deleting temporary PPM file'
-			os.remove(ppm_name)
-	
-		print("Extracting %s color channels... (may take a while)" % colors[colorChannel]) 
-		print 'Saving color channel to RGB array...'
-		try: 
-			rgb_ppm
-		except: 
-			print 'RGB array does not exist, creating it...'
-			rgb_ppm = numpy.array([im_ppm,im_ppm,im_ppm])
-		else:
-			rgb_ppm[colorChannel] = numpy.array(im_ppm)
-		print 'Channel '+str(colorChannel)+' succesfully proccesed.'
+	rgb_ppm = numpy.array([im_ppm[:,:,0],im_ppm[:,:,1],im_ppm[:,:,2]])
 			
 	print("Creating the FITS file...")
 	#Creating the FITS File
