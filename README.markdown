@@ -1,11 +1,15 @@
 cr2fits
 =======
 
-cr2fits.py version **1.0.3**
-http://github.com/eaydin/cr2fits
+cr2fits.py version **1.0.3m**
+Forked from http://github.com/eaydin/cr2fits (1.0.3) to make some changes:
+
+  - Extract all 3 channels from the RAW image and put them on a single 3D fits image (data cube)
+  - Delete temporary PPM files
+  - Automatically update FITS if there is a previous one.
 
 A script to convert RAW images (canon, nikon etc.) to FITS images. I think this'll be useful for professional or amateur astronomers who happen to work with DSLR cameras and want to process their images with some astronomical tool (IRAF?).
-It extracts only one color channel of the RAW image, and writes the necessary EXIF information to the FITS header.
+It extracts 3 color channels of the RAW image, put it on a FITS data cube and writes the necessary EXIF information to the FITS header.
 
 Dependencies :
 
@@ -15,13 +19,13 @@ Dependencies :
 
 Usage : 
 
-`cr2fits.py <cr2-filename> <color-index>`
+`cr2fits.py <cr2-filename>`
 
 - cr2-filename : This will obviously be the name of the file to convert.
-- color-index : Can take three values, either 0, 1, 2 which represent Red, Green, Blue respectively.
 
 Outputs :
 
-The script will output 2 files. One PPM file, and one FITS file. The PPM file is useless if you don’t need it, but the script doesn’t delete it. I’ve left it on purpose, since the script you’re going to call cr2fits can easily handle the job. (ex: your shell script?) The FITS file is what we need, the color channel is also added to the name of the output file.
+The script will output the FITS file (a data cube image). Temporary PPM files are deleted after succesfully loaded as arrays
+
 
 
